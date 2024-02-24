@@ -7,6 +7,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
+import sys
+import os
+sys.path.append(os.path.expanduser('~/Projects/bry_mod/'))
+from bry_mod import *
 
 current_working_dir = os.getcwd()
 save_dir_relative = os.path.join(current_working_dir, "graphs")
@@ -44,18 +48,14 @@ y_pred = model.predict(X_new)
 #
 #
 ############## SAVE PLOT PRINT ########################################################
-save_path = os.path.join(save_dir_relative, "linear_regression_plot.png")
 # Plot the original data and the regression line
+linear_regression_plot, ax = plt.subplots()
 plt.scatter(X, y, label='Original data')
 plt.plot(X_new, y_pred, 'b-', label='Regression line')
 plt.xlabel('X-axis')
 plt.ylabel('Y-axis')
 plt.legend()
-# Save the plot
-plt.savefig(save_path)
-# Display the plot
-#plt.show()
-# Clear the plot for the next example
+save(plot)
 plt.clf()  # or plt.close()
 
 #############################################################################################################################################################################################
@@ -214,3 +214,5 @@ df.to_csv('height_predictions.csv', index=False)
 
 # Display the DataFrame
 print(df)
+
+save_debug(df)
