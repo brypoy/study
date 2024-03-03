@@ -1,3 +1,66 @@
+########## Standard Import #########################################################################################
+import sys
+import os
+sys.path.append(os.path.expanduser('~/Projects/bry_mod/'))
+from bry_mod import *
+
+########## Recomendation System (VIDEO REF) #########################################################################################
+# User based recomendation system
+import pandas as pd
+import numpy as np
+import scipy.stats
+import seaborn as sns
+from sklearn.metrics.pairwise import cosine_similarity
+
+ratings = pd.read_csv('/home/bry/Projects/study/ai-ml-search/files/ratings.csv')
+ratings_head = ratings.head()
+save(ratings_head)
+
+movies = pd.read_csv('/home/bry/Projects/study/ai-ml-search/files/movies.csv')
+movies_head = movies.head()
+save(movies_head)
+
+merged = pd.merge(ratings, movies, on='movieId', how='inner')
+merged_head = merged.head()
+save(merged_head)
+
+agg_ratings = merged.groupby('title').agg(mean_rating=('rating', 'mean'), number_of_ratings=('rating', 'count')).reset_index()
+save(agg_ratings)
+
+agg_ratings_gt100 = agg_ratings[agg_ratings['number_of_ratings'] > 100 ]
+save(agg_ratings_gt100)
+
+agg_ratings_gt100.sort_values(by = 'number_of_ratings', ascending=False).head()
+seaborn_plot = sns.jointplot(x='mean_rating', y='number_of_ratings', data=agg_ratings_gt100)
+save(seaborn_plot)
+
+df_gt100 = pd.merge(merged, agg_ratings_gt100[['title']], on='title', how='inner')
+save(df_gt100)
+
+matrix = df_gt100.pivot_table(index='userId', columns='title', values='rating')
+save(matrix)
+
+#ratings below the average are assigned a negative value while those above the average are given a positive value
+matrix_norm = matrix.subtract(matrix.mean(axis=1), axis = 'rows')
+save(matrix_norm)
+
+# user similarity matrix
+user_similarity = matrix_norm.T.corr()
+save(user_similarity)
+
+# inpute NaN with 0
+user_similarity_cosine = cosine_similarity(matrix_norm.fillna(0))
+save(user_similarity_cosine)
+
+picked_userid = 1
+user_similarity.drop(index=picked_userid, inplace=True)
+save(user_similarity)
+
+n = 10
+user_similarity_threshold = 0.3
+similar_users = user_similarity[user_similarity[picked_userid]>user_similarity_threshold][picked_userid]
+save(similar_users)
+
 ########## Recomendation System #########################################################################################
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -6,7 +69,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
 
 # Load dataset
-ratings_data = pd.read_csv('ratings.csv')
+ratings_data = pd.read_csv('/home/bry/Projects/study/ai-ml-search/files/ratings.csv', na_values='')
 
 # Split into train and test sets
 train_data, test_data = train_test_split(ratings_data, test_size=0.2)
@@ -15,14 +78,23 @@ train_data, test_data = train_test_split(ratings_data, test_size=0.2)
 user_item_matrix = train_data.pivot_table(index='userId', columns='movieId', values='rating').fillna(0)
 user_similarity = cosine_similarity(user_item_matrix)
 item_similarity = cosine_similarity(user_item_matrix.T)
+save(user_similarity)
+#save(item_similarity) !!! This file is too big and crashes system
+print("Shape of user_similarity:", user_similarity.shape)
+print("Shape of item_similarity:", item_similarity.shape)
 
 # Predict ratings
 def predict_rating(user_id, movie_id):
-    user_ratings = user_item_matrix.loc[user_id].values.reshape(1, -1)
+    user_ratings = user_item_matrix.loc[user_id].values.reshape(-1, 1)
     movie_ratings = user_item_matrix[movie_id].values.reshape(-1, 1)
-
-    user_similarities = user_similarity[user_id]
+    save(user_ratings)
+    save(movie_ratings)
+    user_similarities = user_similarity[user_id].reshape(-1, 1)
     movie_similarities = item_similarity[movie_id]
+    print("Shape of user_similarities:", user_similarities.shape)
+    print("Shape of user_ratings:", user_ratings.shape)
+    save(user_ratings)
+    save(movie_ratings)
 
     user_predicted_rating = user_similarities.dot(user_ratings) / sum(user_similarities)
     movie_predicted_rating = movie_similarities.dot(movie_ratings) / sum(movie_similarities)
